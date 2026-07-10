@@ -1,0 +1,62 @@
+{
+  "name": "pwa-station",
+  "version": "0.1.0",
+  "description": "PWA Station SDK — browser SDK for PWA Station platform with SQLite, file storage, notifications, and scheduler. Includes debug mode via wa-sqlite + IndexedDB.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "",
+  "keywords": [
+    "pwa",
+    "sqlite",
+    "wa-sqlite",
+    "indexeddb",
+    "storage",
+    "vue",
+    "composable"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.mjs",
+      "require": "./dist/vue.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "unbuild",
+    "dev": "unbuild --stub",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@journeyapps/wa-sqlite": "^1.0.0",
+    "typescript": "^5.6.0",
+    "unbuild": "^3.0.0",
+    "vue": "^3.5.0"
+  },
+  "peerDependencies": {
+    "@journeyapps/wa-sqlite": "^1.0.0",
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@journeyapps/wa-sqlite": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  }
+}
