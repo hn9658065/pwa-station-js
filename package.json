@@ -14,6 +14,10 @@
     "vue",
     "composable"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hn9658065/pwa-station-js.git"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
