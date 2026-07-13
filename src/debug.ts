@@ -4,9 +4,68 @@ type SQLiteModule = typeof import('@journeyapps/wa-sqlite')
 type SQLiteFactoryType = typeof import('@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs')['default']
 type SQLiteAPI = ReturnType<SQLiteModule['Factory']>
 
-// CDN fallback for wasm file. Used when default `import.meta.url` resolution
-// fails (e.g. Vite dev server returns SPA fallback HTML instead of the wasm).
+// CDN fallback for wasm file (last resort when all local resolution fails).
 const WASM_CDN_URL = 'https://cdn.jsdelivr.net/npm/@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm'
+
+/**
+ * Fetch the wasm binary as an ArrayBuffer.
+ *
+ * The problem: wa-sqlite-async.mjs resolves its wasm via
+ * `new URL('.', import.meta.url)`. When Vite pre-bundles this package,
+ * `import.meta.url` points into `.vite/deps/` where the wasm isn't served,
+ * and the SPA fallback returns index.html instead — causing
+ * WebAssembly instantiation to fail.
+ *
+ * Solution: We fetch the wasm binary ourselves and inject it as `wasmBinary`
+ * directly into the Emscripten Module. This bypasses wa-sqlite's internal
+ * `locateFile` / `fetch` logic entirely, and the URL resolution is done by
+ * *this* module's `import.meta.url` (which Vite correctly rewrites).
+ *
+ * Resolution order:
+ * 1. User-supplied `wasmUrl`
+ * 2. Derive from this module's `import.meta.url` (works in Vite dev & most bundlers)
+ * 3. CDN fallback
+ */
+async function fetchWasmBinary(wasmUrl?: string): Promise<ArrayBuffer> {
+  const urls: string[] = []
+
+  // Strategy 1: user-supplied URL
+  if (wasmUrl) {
+    urls.push(wasmUrl)
+  }
+
+  // Strategy 2: derive from this module's URL (Vite rewrites it correctly)
+  urls.push(new URL(
+    '@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm',
+    import.meta.url,
+  ).href)
+
+  // Strategy 3: CDN
+  urls.push(WASM_CDN_URL)
+
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url)
+      if (!resp.ok)
+        continue
+      const buf = await resp.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      // Verify WebAssembly magic number: 0x00 0x61 0x73 0x6D
+      if (bytes[0] === 0x00 && bytes[1] === 0x61 && bytes[2] === 0x73 && bytes[3] === 0x6D) {
+        return buf
+      }
+    }
+    catch {
+      // try next URL
+    }
+  }
+
+  throw new Error(
+    'Failed to fetch wa-sqlite wasm from all sources. ' +
+    'Please pass a valid wasmUrl to createClient() or ensure ' +
+    '@journeyapps/wa-sqlite is installed.',
+  )
+}
 
 /**
  * Debug mode SDK implementation using IndexedDB.
@@ -19,11 +78,6 @@ const WASM_CDN_URL = 'https://cdn.jsdelivr.net/npm/@journeyapps/wa-sqlite/dist/w
  * This module is lazily loaded by `createClient()` only when debug mode is
  * needed, so production apps never ship the wa-sqlite wasm. SQLite support is
  * also lazy: wa-sqlite is loaded only when sqlite.open/execute/batch is called.
- *
- * Wasm resolution strategy:
- * 1. If `wasmUrl` is provided, use it directly
- * 2. Otherwise, try wa-sqlite's default resolution (works in most bundlers)
- * 3. If that fails (e.g. Vite dev), fall back to CDN
  */
 export function createDebugClient(wasmUrl?: string): ControllerAPI {
   const IDB_NAME = 'pwa-station-debug'
@@ -43,26 +97,22 @@ export function createDebugClient(wasmUrl?: string): ControllerAPI {
 
     initDbPromise = (async (): Promise<number> => {
       try {
-        const [SQLite, { default: SQLiteESMFactory }, IDBBatchAtomicVFSMod] = await Promise.all([
+        // Load the wasm binary ourselves — avoids wa-sqlite's internal
+        // `import.meta.url` resolution which breaks in Vite pre-bundling.
+        const [wasmBinary, SQLite, { default: SQLiteESMFactory }, IDBBatchAtomicVFSMod] = await Promise.all([
+          fetchWasmBinary(wasmUrl),
           import('@journeyapps/wa-sqlite'),
           import('@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs'),
           import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js'),
         ])
         sqliteModule = SQLite
-        const factoryOptions = wasmUrl
-          ? { locateFile: () => wasmUrl }
-          : undefined
-        let module
-        try {
-          module = await (SQLiteESMFactory as SQLiteFactoryType)(factoryOptions)
-        }
-        catch {
-          // Default `import.meta.url` resolution failed (common in Vite dev),
-          // fall back to CDN so the user doesn't need any manual configuration
-          module = await (SQLiteESMFactory as SQLiteFactoryType)({
-            locateFile: () => WASM_CDN_URL,
-          })
-        }
+
+        // Inject wasmBinary directly into Emscripten Module — bypasses
+        // locateFile / fetch so `import.meta.url` is never used for wasm.
+        const module = await (SQLiteESMFactory as SQLiteFactoryType)({
+          wasmBinary: new Uint8Array(wasmBinary),
+        })
+
         sqlite3 = SQLite.Factory(module)
         const IDBBatchAtomicVFS = (IDBBatchAtomicVFSMod as any).IDBBatchAtomicVFS
         const vfs = await IDBBatchAtomicVFS.create('pwa-station-debug', module, { idbName: 'pwa-station-debug-db' })
