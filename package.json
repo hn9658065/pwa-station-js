@@ -20,29 +20,29 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/prod.d.ts",
-      "development": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.mjs",
-        "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "production": {
+        "types": "./dist/prod.d.ts",
+        "import": "./dist/prod.mjs",
+        "require": "./dist/prod.cjs"
       },
-      "import": "./dist/prod.mjs",
-      "require": "./dist/prod.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     },
     "./vue": {
-      "types": "./dist/vue-prod.d.ts",
-      "development": {
-        "types": "./dist/vue.d.ts",
-        "import": "./dist/vue.mjs",
-        "require": "./dist/vue.cjs"
+      "types": "./dist/vue.d.ts",
+      "production": {
+        "types": "./dist/vue-prod.d.ts",
+        "import": "./dist/vue-prod.mjs",
+        "require": "./dist/vue-prod.cjs"
       },
-      "import": "./dist/vue-prod.mjs",
-      "require": "./dist/vue-prod.cjs"
+      "import": "./dist/vue.mjs",
+      "require": "./dist/vue.cjs"
     }
   },
-  "main": "./dist/prod.cjs",
-  "module": "./dist/prod.mjs",
-  "types": "./dist/prod.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
