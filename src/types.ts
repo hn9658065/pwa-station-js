@@ -107,6 +107,19 @@ export interface ControllerAPI {
 export interface CreateClientOptions {
   /** Force debug mode */
   debug?: boolean
+  /**
+   * URL of the wa-sqlite wasm file.
+   *
+   * Required in some dev environments (e.g. Vite) because wa-sqlite cannot
+   * reliably resolve its own .wasm file from `import.meta.url`. Consumers
+   * should import the wasm file with their bundler and pass the resulting URL:
+   *
+   * ```ts
+   * import wasmUrl from '@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm?url'
+   * await createClient({ wasmUrl })
+   * ```
+   */
+  wasmUrl?: string
 }
 
 /** PWA Station global runtime (injected by platform) */

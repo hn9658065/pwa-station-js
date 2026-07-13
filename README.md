@@ -180,20 +180,52 @@ await api.scheduler.remove(taskId)
 
 ## Debug Mode
 
-Debug mode uses `wa-sqlite` (WebAssembly) and IndexedDB to simulate the PWA Station backend. It is automatically enabled when:
+Debug mode uses IndexedDB to simulate the PWA Station backend. It is automatically enabled when:
 - Running outside PWA Station (no `window.ControllerAPI`)
 - `createClient({ debug: true })` is called explicitly
-
-### Enable Debug Mode
 
 ```ts
 import { createClient } from 'pwa-station'
 
-// Explicitly enable
 await createClient({ debug: true })
 ```
 
-**Note:** Debug mode requires `@journeyapps/wa-sqlite` to be installed.
+### SQLite in Debug Mode
+
+SQLite support in debug mode is **optional and lazy**. `wa-sqlite` is loaded only when you call `api.sqlite.open/execute/batch`.
+
+If you do **not** use SQLite, you do not need to install `@journeyapps/wa-sqlite`.
+
+If you use SQLite, install it as a dev dependency in your project:
+
+```bash
+npm install -D @journeyapps/wa-sqlite
+```
+
+`pwa-station` declares `@journeyapps/wa-sqlite` as an **optional peer dependency**. It is not installed automatically, so you must add it explicitly when you need SQLite in debug mode. Since it is only used for local debugging, `devDependencies` is the right place for it.
+
+```ts
+import { createClient } from 'pwa-station'
+
+await createClient({ debug: true })
+
+// SQLite works out of the box
+await api.sqlite.open('mydb')
+await api.sqlite.execute('CREATE TABLE foo (bar TEXT)')
+```
+
+The SDK automatically resolves the wasm file: it first tries the default `import.meta.url` resolution, and falls back to a CDN if that fails (e.g. in Vite dev server).
+
+### Custom wasm URL
+
+If you need to override the wasm location (e.g. air-gapped environment, or to bundle it with Vite):
+
+```ts
+import { createClient } from 'pwa-station'
+import wasmUrl from '@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm?url'
+
+await createClient({ debug: true, wasmUrl })
+```
 
 ## TypeScript Types
 

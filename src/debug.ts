@@ -1,39 +1,36 @@
 import type { ControllerAPI, FileEntry, NotificationPayload, SchedulerCreatePayload, SqliteResult } from './types'
-import * as SQLite from '@journeyapps/wa-sqlite'
-import SQLiteESMFactory from '@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs'
-import { IDBBatchAtomicVFS } from '@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js'
 
-type SQLiteAPI = ReturnType<typeof SQLite.Factory>
+type SQLiteModule = typeof import('@journeyapps/wa-sqlite')
+type SQLiteFactoryType = typeof import('@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs')['default']
+type SQLiteAPI = ReturnType<SQLiteModule['Factory']>
 
-/**
- * wa-sqlite wasm URL.
- *
- * Uses `new URL(..., import.meta.url)` — the portable pattern recognized by
- * Vite, webpack 5, and Parcel. The consumer's bundler resolves this to the
- * correct asset URL. `@journeyapps/wa-sqlite` is an external dependency, so
- * the wasm file is resolved from the consumer's node_modules.
- */
-const wasmUrl = new URL(
-  '@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm',
-  import.meta.url,
-).href
+// CDN fallback for wasm file. Used when default `import.meta.url` resolution
+// fails (e.g. Vite dev server returns SPA fallback HTML instead of the wasm).
+const WASM_CDN_URL = 'https://cdn.jsdelivr.net/npm/@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm'
 
 /**
- * Debug mode SDK implementation using wa-sqlite + IndexedDB.
+ * Debug mode SDK implementation using IndexedDB.
  *
- * - SQLite → wa-sqlite (wasm) backed by IndexedDB VFS
+ * - SQLite → wa-sqlite (wasm) backed by IndexedDB VFS, loaded on demand
  * - File storage → IndexedDB
  * - Notifications → browser Notification API
  * - Scheduler → in-memory stub (logs only)
  *
  * This module is lazily loaded by `createClient()` only when debug mode is
- * needed, so production apps never ship the wa-sqlite wasm.
+ * needed, so production apps never ship the wa-sqlite wasm. SQLite support is
+ * also lazy: wa-sqlite is loaded only when sqlite.open/execute/batch is called.
+ *
+ * Wasm resolution strategy:
+ * 1. If `wasmUrl` is provided, use it directly
+ * 2. Otherwise, try wa-sqlite's default resolution (works in most bundlers)
+ * 3. If that fails (e.g. Vite dev), fall back to CDN
  */
-export function createDebugClient(): ControllerAPI {
+export function createDebugClient(wasmUrl?: string): ControllerAPI {
   const IDB_NAME = 'pwa-station-debug'
   const IDB_STORE = 'files'
   const DB_NAME = 'pwa-station-debug.db'
 
+  let sqliteModule: SQLiteModule | null = null
   let sqlite3: SQLiteAPI | null = null
   let db: number | null = null
   let initDbPromise: Promise<number> | null = null
@@ -45,12 +42,41 @@ export function createDebugClient(): ControllerAPI {
       return initDbPromise
 
     initDbPromise = (async (): Promise<number> => {
-      const module = await SQLiteESMFactory({ locateFile: () => wasmUrl })
-      sqlite3 = SQLite.Factory(module)
-      const vfs = await (IDBBatchAtomicVFS as any).create('pwa-station-debug', module, { idbName: 'pwa-station-debug-db' })
-      sqlite3.vfs_register(vfs, true)
-      db = await sqlite3.open_v2(DB_NAME)
-      return db!
+      try {
+        const [SQLite, { default: SQLiteESMFactory }, IDBBatchAtomicVFSMod] = await Promise.all([
+          import('@journeyapps/wa-sqlite'),
+          import('@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs'),
+          import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js'),
+        ])
+        sqliteModule = SQLite
+        const factoryOptions = wasmUrl
+          ? { locateFile: () => wasmUrl }
+          : undefined
+        let module
+        try {
+          module = await (SQLiteESMFactory as SQLiteFactoryType)(factoryOptions)
+        }
+        catch {
+          // Default `import.meta.url` resolution failed (common in Vite dev),
+          // fall back to CDN so the user doesn't need any manual configuration
+          module = await (SQLiteESMFactory as SQLiteFactoryType)({
+            locateFile: () => WASM_CDN_URL,
+          })
+        }
+        sqlite3 = SQLite.Factory(module)
+        const IDBBatchAtomicVFS = (IDBBatchAtomicVFSMod as any).IDBBatchAtomicVFS
+        const vfs = await IDBBatchAtomicVFS.create('pwa-station-debug', module, { idbName: 'pwa-station-debug-db' })
+        sqlite3.vfs_register(vfs, true)
+        db = await sqlite3.open_v2(DB_NAME)
+        return db!
+      }
+      catch (err) {
+        throw new Error(
+          `Failed to load @journeyapps/wa-sqlite. ` +
+          `If you use SQLite in debug mode, install the package and pass wasmUrl if your bundler requires it. ` +
+          `Original error: ${err}`,
+        )
+      }
     })()
 
     return initDbPromise
@@ -73,7 +99,7 @@ export function createDebugClient(): ControllerAPI {
 
       if (isSelect) {
         const rows: Record<string, any>[] = []
-        while (await sqlite3.step(stmt) === SQLite.SQLITE_ROW) {
+        while (await sqlite3.step(stmt) === sqliteModule!.SQLITE_ROW) {
           const row: Record<string, any> = {}
           for (let i = 0; i < columns.length; i++)
             row[columns[i]] = sqlite3.column(stmt, i)

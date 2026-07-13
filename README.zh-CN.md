@@ -180,20 +180,52 @@ await api.scheduler.remove(taskId)
 
 ## 调试模式
 
-调试模式使用 `wa-sqlite`（WebAssembly）和 IndexedDB 模拟 PWA Station 后端。自动启用条件：
+调试模式使用 IndexedDB 模拟 PWA Station 后端。自动启用条件：
 - 在 PWA Station 外部运行（无 `window.ControllerAPI`）
 - 显式调用 `createClient({ debug: true })`
-
-### 启用调试模式
 
 ```ts
 import { createClient } from 'pwa-station'
 
-// 显式启用
 await createClient({ debug: true })
 ```
 
-**注意：** 调试模式需要安装 `@journeyapps/wa-sqlite`。
+### 调试模式中的 SQLite
+
+调试模式中的 SQLite 支持是**可选且懒加载**的。只有调用 `api.sqlite.open/execute/batch` 时才会加载 `wa-sqlite`。
+
+如果**不使用** SQLite，则无需安装 `@journeyapps/wa-sqlite`。
+
+如果使用 SQLite，请将其作为开发依赖安装到你的项目中：
+
+```bash
+npm install -D @journeyapps/wa-sqlite
+```
+
+`pwa-station` 将 `@journeyapps/wa-sqlite` 声明为**可选的 peer dependency**，因此它不会随 `pwa-station` 自动安装。只有你需要在调试模式下使用 SQLite 时才需要手动添加。由于它仅用于本地调试，安装在 `devDependencies` 中是合适的。
+
+```ts
+import { createClient } from 'pwa-station'
+
+await createClient({ debug: true })
+
+// SQLite 开箱即用
+await api.sqlite.open('mydb')
+await api.sqlite.execute('CREATE TABLE foo (bar TEXT)')
+```
+
+SDK 会自动解析 wasm 文件：优先尝试默认的 `import.meta.url` 解析，失败时（如 Vite dev server）自动回退到 CDN。
+
+### 自定义 wasm URL
+
+如果需要覆盖 wasm 加载位置（如内网环境，或通过 Vite 打包到产物中）：
+
+```ts
+import { createClient } from 'pwa-station'
+import wasmUrl from '@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm?url'
+
+await createClient({ debug: true, wasmUrl })
+```
 
 ## TypeScript 类型
 

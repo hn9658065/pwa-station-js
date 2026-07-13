@@ -27,10 +27,9 @@ export function createClient(options?: CreateClientOptions): Promise<ControllerA
     }
     else {
       const { createDebugClient } = await import('./debug')
-      _api = createDebugClient()
+      _api = createDebugClient(options?.wasmUrl)
     }
 
-    await _api.sqlite.open('default')
     return _api
   })()
 
