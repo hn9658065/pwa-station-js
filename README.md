@@ -184,10 +184,10 @@ This package ships two builds controlled by Node.js [conditional exports](https:
 
 | Condition | Entry | Includes debug mode | Loads wa-sqlite wasm |
 |---|---|---|---|
-| `development` (default for `NODE_ENV=development` / Vite dev) | `dist/index.mjs` / `dist/index.cjs` | ✅ Yes | Only when SQLite is used |
-| default / production | `dist/prod.mjs` / `dist/prod.cjs` | ❌ No | ❌ Never |
+| default / `development` | `dist/index.mjs` / `dist/index.cjs` | ✅ Yes | Only when SQLite is used |
+| `production` | `dist/prod.mjs` / `dist/prod.cjs` | ❌ No | ❌ Never |
 
-Most bundlers (Vite, webpack, Rollup) resolve `development` automatically in dev mode, so you get debug fallback for free. Production builds use the lean version that never touches wa-sqlite.
+When no mode is specified, the default entry is the **development build** with debug fallback enabled. Most bundlers (Vite, webpack, Rollup) resolve `development` automatically in dev mode. Use `--mode production` (or set `NODE_ENV=production`) to get the lean build that never touches wa-sqlite.
 
 ## Debug Mode
 

@@ -184,10 +184,10 @@ await api.scheduler.remove(taskId)
 
 | 条件 | 入口 | 是否包含调试模式 | 是否加载 wa-sqlite wasm |
 |---|---|---|---|
-| `development`（`NODE_ENV=development` / Vite dev 默认） | `dist/index.mjs` / `dist/index.cjs` | ✅ 是 | 仅使用 SQLite 时 |
-| default / production | `dist/prod.mjs` / `dist/prod.cjs` | ❌ 否 | ❌ 永不 |
+| 默认 / `development` | `dist/index.mjs` / `dist/index.cjs` | ✅ 是 | 仅使用 SQLite 时 |
+| `production` | `dist/prod.mjs` / `dist/prod.cjs` | ❌ 否 | ❌ 永不 |
 
-大多数构建工具（Vite、webpack、Rollup）在开发模式下会自动解析 `development` 条件，因此无需配置即可获得调试回退能力。生产构建使用精简版本，永远不会触碰 wa-sqlite。
+未指定 mode 时，默认入口为包含调试回退能力的**开发版**。大多数构建工具（Vite、webpack、Rollup）在开发模式下会自动解析 `development` 条件。使用 `--mode production`（或设置 `NODE_ENV=production`）可获得精简版，该版本永远不会触碰 wa-sqlite。
 
 ## 调试模式
 
