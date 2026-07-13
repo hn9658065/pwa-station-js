@@ -178,9 +178,20 @@ const tasks = await api.scheduler.list()
 await api.scheduler.remove(taskId)
 ```
 
+## 开发版与生产版
+
+本包通过 Node.js [条件导出](https://nodejs.org/api/packages.html#conditional-exports) 提供两个构建版本：
+
+| 条件 | 入口 | 是否包含调试模式 | 是否加载 wa-sqlite wasm |
+|---|---|---|---|
+| `development`（`NODE_ENV=development` / Vite dev 默认） | `dist/index.mjs` / `dist/index.cjs` | ✅ 是 | 仅使用 SQLite 时 |
+| default / production | `dist/prod.mjs` / `dist/prod.cjs` | ❌ 否 | ❌ 永不 |
+
+大多数构建工具（Vite、webpack、Rollup）在开发模式下会自动解析 `development` 条件，因此无需配置即可获得调试回退能力。生产构建使用精简版本，永远不会触碰 wa-sqlite。
+
 ## 调试模式
 
-调试模式使用 IndexedDB 模拟 PWA Station 后端。自动启用条件：
+调试模式使用 IndexedDB 模拟 PWA Station 后端。仅在 `development` 构建中可用，自动启用条件：
 - 在 PWA Station 外部运行（无 `window.ControllerAPI`）
 - 显式调用 `createClient({ debug: true })`
 

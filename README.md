@@ -178,9 +178,20 @@ const tasks = await api.scheduler.list()
 await api.scheduler.remove(taskId)
 ```
 
+## Development vs Production Builds
+
+This package ships two builds controlled by Node.js [conditional exports](https://nodejs.org/api/packages.html#conditional-exports):
+
+| Condition | Entry | Includes debug mode | Loads wa-sqlite wasm |
+|---|---|---|---|
+| `development` (default for `NODE_ENV=development` / Vite dev) | `dist/index.mjs` / `dist/index.cjs` | ✅ Yes | Only when SQLite is used |
+| default / production | `dist/prod.mjs` / `dist/prod.cjs` | ❌ No | ❌ Never |
+
+Most bundlers (Vite, webpack, Rollup) resolve `development` automatically in dev mode, so you get debug fallback for free. Production builds use the lean version that never touches wa-sqlite.
+
 ## Debug Mode
 
-Debug mode uses IndexedDB to simulate the PWA Station backend. It is automatically enabled when:
+Debug mode uses IndexedDB to simulate the PWA Station backend. It is available only in the `development` build, and is automatically enabled when:
 - Running outside PWA Station (no `window.ControllerAPI`)
 - `createClient({ debug: true })` is called explicitly
 
