@@ -4,26 +4,28 @@ let _api: ControllerAPI | null = null
 let _initPromise: Promise<ControllerAPI> | null = null
 
 /**
- * Production-only client. Resolves from `window.ControllerAPI` or
- * `window.PWAStation.createClient()`. Does NOT fall back to debug mode,
- * so the wa-sqlite wasm is never loaded.
+ * Production client. Resolves from `window.ControllerAPI` or
+ * `window.PWAStation.createClient()`. The `debug` option is silently
+ * ignored — debug mode is only available in the development build.
  */
 export function createClient(options?: CreateClientOptions): Promise<ControllerAPI> {
   if (_initPromise)
     return _initPromise
 
   _initPromise = (async () => {
-    if (!options?.debug && typeof window !== 'undefined' && window.ControllerAPI) {
+    if (typeof window !== 'undefined' && window.ControllerAPI) {
       _api = window.ControllerAPI
     }
     else if (typeof window !== 'undefined' && window.PWAStation) {
       _api = window.PWAStation.createClient({ debug: options?.debug ?? true })
     }
     else {
+      // Production build: debug mode is not available, silently ignore it.
+      // If the runtime is not found, throw an error.
       throw new Error(
         'PWA Station runtime not found. ' +
         'This is the production build of pwa-station. ' +
-        'Use the development build or install the full package to enable debug mode.',
+        'Use the development build to enable debug mode.',
       )
     }
 
