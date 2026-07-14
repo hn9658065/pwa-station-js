@@ -34,6 +34,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./prod": {
+      "types": "./dist/prod.d.ts",
+      "import": "./dist/prod.mjs",
+      "require": "./dist/prod.cjs"
+    },
     "./vue": {
       "types": "./dist/vue.d.ts",
       "production": {
@@ -48,6 +53,11 @@
       },
       "import": "./dist/vue.mjs",
       "require": "./dist/vue.cjs"
+    },
+    "./vue-prod": {
+      "types": "./dist/vue-prod.d.ts",
+      "import": "./dist/vue-prod.mjs",
+      "require": "./dist/vue-prod.cjs"
     }
   },
   "main": "./dist/index.cjs",

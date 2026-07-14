@@ -180,14 +180,28 @@ await api.scheduler.remove(taskId)
 
 ## 开发版与生产版
 
-本包通过 Node.js [条件导出](https://nodejs.org/api/packages.html#conditional-exports) 提供两个构建版本：
+本包提供两个构建版本：
 
-| 条件 | 入口 | 是否包含调试模式 | 是否加载 wa-sqlite wasm |
+| 入口 | 导入路径 | 是否包含调试模式 | 是否加载 wa-sqlite wasm |
 |---|---|---|---|
-| 默认 / `development` | `dist/index.mjs` / `dist/index.cjs` | ✅ 是 | 仅使用 SQLite 时 |
-| `production` | `dist/prod.mjs` / `dist/prod.cjs` | ❌ 否 | ❌ 永不 |
+| `dist/index.mjs` / `dist/index.cjs` | `pwa-station` | ✅ 是 | 仅使用 SQLite 时 |
+| `dist/prod.mjs` / `dist/prod.cjs` | `pwa-station/prod` | ❌ 否 | ❌ 永不 |
 
-未指定 mode 时，默认入口为包含调试回退能力的**开发版**。大多数构建工具（Vite、webpack、Rollup）在开发模式下会自动解析 `development` 条件。使用 `--mode production`（或设置 `NODE_ENV=production`）可获得精简版，该版本永远不会触碰 wa-sqlite。
+### Vite 推荐用法
+
+Vite **不会**根据 `--mode production` 自动切换 npm 包的条件导出。生产构建请使用显式子路径：
+
+```ts
+// Vite 开发：可用调试回退
+import { createClient } from 'pwa-station'
+
+// Vite 生产构建：精简版，不含 wa-sqlite
+import { createClient } from 'pwa-station/prod'
+```
+
+### 条件导出
+
+如果你的打包工具支持 Node.js 条件导出（如配置过的 Rollup、Node 本身），也可以使用 `production` 和 `development` 条件。
 
 ## 调试模式
 

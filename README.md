@@ -180,14 +180,28 @@ await api.scheduler.remove(taskId)
 
 ## Development vs Production Builds
 
-This package ships two builds controlled by Node.js [conditional exports](https://nodejs.org/api/packages.html#conditional-exports):
+This package ships two builds:
 
-| Condition | Entry | Includes debug mode | Loads wa-sqlite wasm |
+| Entry | Import path | Includes debug mode | Loads wa-sqlite wasm |
 |---|---|---|---|
-| default / `development` | `dist/index.mjs` / `dist/index.cjs` | ✅ Yes | Only when SQLite is used |
-| `production` | `dist/prod.mjs` / `dist/prod.cjs` | ❌ No | ❌ Never |
+| `dist/index.mjs` / `dist/index.cjs` | `pwa-station` | ✅ Yes | Only when SQLite is used |
+| `dist/prod.mjs` / `dist/prod.cjs` | `pwa-station/prod` | ❌ No | ❌ Never |
 
-When no mode is specified, the default entry is the **development build** with debug fallback enabled. Most bundlers (Vite, webpack, Rollup) resolve `development` automatically in dev mode. Use `--mode production` (or set `NODE_ENV=production`) to get the lean build that never touches wa-sqlite.
+### Recommended usage with Vite
+
+Vite does **not** automatically switch npm package exports based on `--mode production`. Use the explicit subpath for production builds:
+
+```ts
+// Vite dev: debug fallback is available
+import { createClient } from 'pwa-station'
+
+// Vite production build: lean build, no wa-sqlite
+import { createClient } from 'pwa-station/prod'
+```
+
+### Conditional exports
+
+If your bundler supports Node.js conditional exports (e.g. configured Rollup, Node itself), the `production` and `development` conditions are also available.
 
 ## Debug Mode
 
