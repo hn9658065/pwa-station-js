@@ -1,6 +1,6 @@
 {
   "name": "pwa-station",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PWA Station SDK — browser SDK for PWA Station platform with SQLite, file storage, notifications, and scheduler. Includes debug mode via wa-sqlite + IndexedDB.",
   "type": "module",
   "license": "Apache-2.0",
