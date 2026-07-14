@@ -1,3 +1,4 @@
+import { ensureControllerRuntime } from './runtime'
 import type { ControllerAPI, CreateClientOptions } from './types'
 
 let _api: ControllerAPI | null = null
@@ -13,6 +14,8 @@ export function createClient(options?: CreateClientOptions): Promise<ControllerA
     return _initPromise
 
   _initPromise = (async () => {
+    await ensureControllerRuntime()
+
     if (typeof window !== 'undefined' && window.ControllerAPI) {
       _api = window.ControllerAPI
     }

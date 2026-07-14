@@ -60,10 +60,9 @@ import { onMounted } from 'vue'
 
 const { api, ready, init } = usePWAStation()
 
-onMounted(() => {
-  init().then(() => {
-    api.value?.sqlite.execute('CREATE TABLE IF NOT EXISTS notes (...)')
-  })
+onMounted(async () => {
+  await init()
+  await api.value?.sqlite.execute('CREATE TABLE IF NOT EXISTS notes (...)')
 })
 ```
 
@@ -186,6 +185,7 @@ This package ships two builds:
 |---|---|---|---|
 | `dist/index.mjs` / `dist/index.cjs` | `pwa-station` | ✅ Yes | Only when SQLite is used |
 | `dist/prod.mjs` / `dist/prod.cjs` | `pwa-station/prod` | ❌ No | ❌ Never |
+| `dist/vue-prod.mjs` / `dist/vue-prod.cjs` | `pwa-station/vue-prod` | ❌ No | ❌ Never |
 
 ### Recommended usage with Vite
 
@@ -197,11 +197,54 @@ import { createClient } from 'pwa-station'
 
 // Vite production build: lean build, no wa-sqlite
 import { createClient } from 'pwa-station/prod'
+
+// Vue 3 production build
+import { usePWAStation } from 'pwa-station/vue-prod'
 ```
 
 ### Conditional exports
 
 If your bundler supports Node.js conditional exports (e.g. configured Rollup, Node itself), the `production` and `development` conditions are also available.
+
+To make Vite resolve the `production` condition automatically, add it to `resolve.conditions`:
+
+```ts
+export default defineConfig({
+  resolve: {
+    conditions: ['production'], // or ['development'] for dev
+  },
+})
+```
+
+## Usage with Vite
+
+If you previously referenced the SDK via a local link (e.g. `link:../../sdk`), switch to the npm package and clean up your Vite config:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  // No longer needed for an npm package
+  // optimizeDeps: { exclude: ['pwa-station'] },
+  // server: { fs: { allow: ['.', '../../sdk'] } },
+
+  // Still required if you use SQLite in debug mode
+  assetsInclude: ['**/*.wasm'],
+})
+```
+
+```json
+// package.json
+{
+  "dependencies": {
+    "pwa-station": "^0.1.0"
+  },
+  "devDependencies": {
+    "@journeyapps/wa-sqlite": "^1.7.0"
+  }
+}
+```
+
+`@journeyapps/wa-sqlite` is only required for SQLite in debug mode; pure production builds can omit it.
 
 ## Debug Mode
 
@@ -260,19 +303,27 @@ All types are exported and can be used for type safety:
 import type { ControllerAPI, SqliteResult, FileEntry, NotificationPayload } from 'pwa-station'
 ```
 
+> For TypeScript to resolve subpath exports like `pwa-station/vue`, use `"moduleResolution": "bundler"` (recommended with Vite) or `"node16"` in your `tsconfig.json`. The legacy `"node"` mode does not understand the `exports` field.
+
 ## Project Structure
 
 ```
 pwa-station/
 ├── src/
-│   ├── index.ts          # Framework-agnostic core
-│   ├── vue.ts            # Vue 3 composable
+│   ├── index.ts          # Framework-agnostic core (with debug fallback)
+│   ├── prod.ts           # Production-only core
+│   ├── prod-client.ts    # Production client factory
+│   ├── vue.ts            # Vue 3 composable (with debug fallback)
+│   ├── vue-prod.ts       # Production-only Vue composable
 │   ├── client.ts         # Client factory
+│   ├── runtime.ts        # Controller runtime loader
 │   ├── debug.ts          # Debug mode implementation
 │   └── types.ts          # Type definitions
 └── dist/                 # Build output
     ├── index.mjs/cjs     # Core bundle
-    ├── vue.mjs/cjs       # Vue composable
+    ├── prod.mjs/cjs      # Production-only core bundle
+    ├── vue.mjs/cjs       # Vue composable bundle
+    ├── vue-prod.mjs/cjs  # Production-only Vue composable bundle
     └── chunks/           # Lazy-loaded debug module
 ```
 

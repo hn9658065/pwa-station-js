@@ -1,3 +1,4 @@
+import { ensureControllerRuntime } from './runtime'
 import type { ControllerAPI, CreateClientOptions } from './types'
 
 let _api: ControllerAPI | null = null
@@ -19,16 +20,31 @@ export function createClient(options?: CreateClientOptions): Promise<ControllerA
     return _initPromise
 
   _initPromise = (async () => {
-    if (!options?.debug && typeof window !== 'undefined' && window.ControllerAPI) {
-      _api = window.ControllerAPI
+    if (!options?.debug) {
+      try {
+        await ensureControllerRuntime()
+      }
+      catch {
+        // Not running under the PWA Station controller; fall through to
+        // PWAStation global or debug mode below.
+      }
+
+      if (typeof window !== 'undefined' && window.ControllerAPI) {
+        _api = window.ControllerAPI
+        return _api
+      }
+      else if (typeof window !== 'undefined' && window.PWAStation) {
+        _api = window.PWAStation.createClient({ debug: options?.debug ?? true })
+        return _api
+      }
     }
     else if (typeof window !== 'undefined' && window.PWAStation) {
       _api = window.PWAStation.createClient({ debug: options?.debug ?? true })
+      return _api
     }
-    else {
-      const { createDebugClient } = await import('./debug')
-      _api = createDebugClient(options?.wasmUrl)
-    }
+
+    const { createDebugClient } = await import('./debug')
+    _api = createDebugClient(options?.wasmUrl)
 
     return _api
   })()

@@ -60,10 +60,9 @@ import { onMounted } from 'vue'
 
 const { api, ready, init } = usePWAStation()
 
-onMounted(() => {
-  init().then(() => {
-    api.value?.sqlite.execute('CREATE TABLE IF NOT EXISTS notes (...)')
-  })
+onMounted(async () => {
+  await init()
+  await api.value?.sqlite.execute('CREATE TABLE IF NOT EXISTS notes (...)')
 })
 ```
 
@@ -186,6 +185,7 @@ await api.scheduler.remove(taskId)
 |---|---|---|---|
 | `dist/index.mjs` / `dist/index.cjs` | `pwa-station` | ✅ 是 | 仅使用 SQLite 时 |
 | `dist/prod.mjs` / `dist/prod.cjs` | `pwa-station/prod` | ❌ 否 | ❌ 永不 |
+| `dist/vue-prod.mjs` / `dist/vue-prod.cjs` | `pwa-station/vue-prod` | ❌ 否 | ❌ 永不 |
 
 ### Vite 推荐用法
 
@@ -197,11 +197,54 @@ import { createClient } from 'pwa-station'
 
 // Vite 生产构建：精简版，不含 wa-sqlite
 import { createClient } from 'pwa-station/prod'
+
+// Vue 3 生产构建
+import { usePWAStation } from 'pwa-station/vue-prod'
 ```
 
 ### 条件导出
 
 如果你的打包工具支持 Node.js 条件导出（如配置过的 Rollup、Node 本身），也可以使用 `production` 和 `development` 条件。
+
+如果你希望 Vite 自动解析 `production` 条件，可以在 `vite.config.ts` 中配置：
+
+```ts
+export default defineConfig({
+  resolve: {
+    conditions: ['production'], // 开发环境可改为 ['development']
+  },
+})
+```
+
+## 在 Vite 中使用
+
+如果你之前通过本地 link（例如 `link:../../sdk`）引用 SDK，改为 npm 包后建议清理 Vite 配置：
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  // 使用 npm 包后不再需要
+  // optimizeDeps: { exclude: ['pwa-station'] },
+  // server: { fs: { allow: ['.', '../../sdk'] } },
+
+  // 调试模式下使用 SQLite 时仍然需要
+  assetsInclude: ['**/*.wasm'],
+})
+```
+
+```json
+// package.json
+{
+  "dependencies": {
+    "pwa-station": "^0.1.0"
+  },
+  "devDependencies": {
+    "@journeyapps/wa-sqlite": "^1.7.0"
+  }
+}
+```
+
+`@journeyapps/wa-sqlite` 仅在调试模式下使用 SQLite 时才需要；纯生产构建可以省略。
 
 ## 调试模式
 
@@ -260,19 +303,27 @@ await createClient({ debug: true, wasmUrl })
 import type { ControllerAPI, SqliteResult, FileEntry, NotificationPayload } from 'pwa-station'
 ```
 
+> 为了让 TypeScript 正确解析 `pwa-station/vue` 等子路径导出，请在 `tsconfig.json` 中使用 `"moduleResolution": "bundler"`（配合 Vite 推荐）或 `"node16"`。老旧的 `"node"` 模式无法识别 `exports` 字段。
+
 ## 项目结构
 
 ```
 pwa-station/
 ├── src/
-│   ├── index.ts          # 框架无关核心
-│   ├── vue.ts            # Vue 3 组合式函数
+│   ├── index.ts          # 框架无关核心（含调试回退）
+│   ├── prod.ts           # 仅生产环境核心
+│   ├── prod-client.ts    # 生产环境客户端工厂
+│   ├── vue.ts            # Vue 3 组合式函数（含调试回退）
+│   ├── vue-prod.ts       # 仅生产环境 Vue 组合式函数
 │   ├── client.ts         # 客户端工厂
+│   ├── runtime.ts        # 控制器运行时加载器
 │   ├── debug.ts          # 调试模式实现
 │   └── types.ts          # 类型定义
 └── dist/                 # 构建输出
     ├── index.mjs/cjs     # 核心包
-    ├── vue.mjs/cjs       # Vue 组合式函数
+    ├── prod.mjs/cjs      # 仅生产环境核心包
+    ├── vue.mjs/cjs       # Vue 组合式函数包
+    ├── vue-prod.mjs/cjs  # 仅生产环境 Vue 组合式函数包
     └── chunks/           # 懒加载调试模块
 ```
 
