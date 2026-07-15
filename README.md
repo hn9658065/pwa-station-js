@@ -223,12 +223,9 @@ If you previously referenced the SDK via a local link (e.g. `link:../../sdk`), s
 ```ts
 // vite.config.ts
 export default defineConfig({
-  // No longer needed for an npm package
-  // optimizeDeps: { exclude: ['pwa-station'] },
-  // server: { fs: { allow: ['.', '../../sdk'] } },
-
-  // Still required if you use SQLite in debug mode
-  assetsInclude: ['**/*.wasm'],
+  optimizeDeps: {
+    exclude: ['pwa-station'],
+  },
 })
 ```
 

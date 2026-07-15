@@ -1,4 +1,4 @@
-import { ensureControllerRuntime } from './runtime'
+import { ensureControllerRuntime, shouldAutoEnableDebug } from './runtime'
 import type { ControllerAPI, CreateClientOptions } from './types'
 
 let _api: ControllerAPI | null = null
@@ -20,7 +20,12 @@ export function createClient(options?: CreateClientOptions): Promise<ControllerA
     return _initPromise
 
   _initPromise = (async () => {
-    if (!options?.debug) {
+    // Debug mode (explicit option or auto-detected). In debug mode we must NOT
+    // inject /__controller__/api.js — resolve directly to the PWAStation
+    // global (debug) or the local debug client (wa-sqlite + IndexedDB).
+    const debug = options?.debug ?? shouldAutoEnableDebug()
+
+    if (!debug) {
       try {
         await ensureControllerRuntime()
       }
@@ -33,12 +38,11 @@ export function createClient(options?: CreateClientOptions): Promise<ControllerA
         _api = window.ControllerAPI
         return _api
       }
-      else if (typeof window !== 'undefined' && window.PWAStation) {
-        _api = window.PWAStation.createClient({ debug: options?.debug ?? true })
-        return _api
-      }
     }
-    else if (typeof window !== 'undefined' && window.PWAStation) {
+
+    // Either debug mode, or no controller runtime was found: use the
+    // PWAStation global (if present, in debug mode) or the local debug client.
+    if (typeof window !== 'undefined' && window.PWAStation) {
       _api = window.PWAStation.createClient({ debug: options?.debug ?? true })
       return _api
     }

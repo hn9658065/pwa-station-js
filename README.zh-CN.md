@@ -20,7 +20,7 @@ npm install pwa-station
 **调试模式**（不启动 PWA Station 后端进行开发）：
 
 ```bash
-npm install @journeyapps/wa-sqlite
+npm install -D @journeyapps/wa-sqlite
 ```
 
 **Vue 3 组合式函数**：
@@ -223,12 +223,9 @@ export default defineConfig({
 ```ts
 // vite.config.ts
 export default defineConfig({
-  // 使用 npm 包后不再需要
-  // optimizeDeps: { exclude: ['pwa-station'] },
-  // server: { fs: { allow: ['.', '../../sdk'] } },
-
-  // 调试模式下使用 SQLite 时仍然需要
-  assetsInclude: ['**/*.wasm'],
+  optimizeDeps: {
+    exclude: ['pwa-station'],
+  },
 })
 ```
 
